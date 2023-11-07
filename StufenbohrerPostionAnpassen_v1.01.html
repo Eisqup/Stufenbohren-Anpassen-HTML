@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="Steven Stegink" content="Berechnung der Achsen-Korrektur für die Bohrmaschinen">
+    <title>Stufenbohrer-Postion anpassen v1.01</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Monoton">
+
+    <style>
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 5px;
+            font-size: 1.2rem;
+        }
+
+        body {
+            text-align: center;
+        }
+
+        h1 {
+            font-family: Arial;
+            font-size: 70px;
+            margin: 0.2em;
+        }
+
+        h2 {
+            margin: 1em 0 0.25em;
+        }
+
+        h2:first-of-type {
+            margin-top: 0.5em;
+        }
+
+        table,
+        tr,
+        td {
+            border: 2px solid black;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 0 auto;
+            font-size: 2.5rem;
+        }
+
+        tr {
+            height: 20px;
+        }
+
+        td {
+            width: 20px;
+            padding: 8px 70px;
+        }
+
+        input[type=number] {
+            width: 7em;
+        }
+
+        option {
+            color: black;
+            background-color: lightgray;
+        }
+
+        #dropDownList {
+            font-size: 1.7rem;
+        }
+
+        .h2 {
+            margin-top: 40px;
+            text-decoration: underline;
+            font-size: 1.4rem;
+        }
+
+        footer {
+            color: lightgray;
+            float: right;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div>
+
+        <h1>Stufenbohrer-Postion anpassen</h1>
+
+        <h2>Wähle eine Anlage</h2>
+
+        <select id="dropDownList">
+            <option> #694 </option>
+            <option> #103 </option>
+            <option> #474 </option>
+        </select>
+
+        <h2 class="header">Bitte die <strong>Abweich</strong>-Werte (ABW) der Zeiss eingeben.</h2>
+
+        <form id="sizePicker">
+            <div class="inpuContainer">
+                A-Seite X:
+                <input type="number" id="inputXA" name="X_A" min="0.0001" value="0.0000" , step="0.0001">
+                Y:
+                <input type="number" id="inputYA" name="Y_A" min="0.0001" value="0.0000" , step="0.0001">
+                Z:
+                <input type="number" id="inputZA" name="Z_A" min="0.0001" value="0.0000" , step="0.0001">
+            </div>
+
+            <div class="inputConainer">
+                B-Seite X:
+                <input type="number" id="inputXB" name="X_B" min="0.0001" value="0.0000" , step="0.0001">
+                Y:
+                <input type="number" id="inputYB" name="Y_B" min="0.0001" value="0.0000" , step="0.0001">
+                Z:
+                <input type="number" id="inputZB" name="Z_B" min="0.0001" value="0.0000" , step="0.0001">
+            </div>
+
+            <input class="button" type="submit" value="Berechnung Starten">
+        </form>
+        <h2 class="h2"></h2>
+        <table id="correctionTable">
+        </table>
+    </div>
+    <div>
+        <footer>v1.01</footer>
+    </div>
+
+    <script>
+
+        function bohren(A_X_ist, A_Y_ist, A_Z_ist, B_X_ist, B_Y_ist, B_Z_ist, machine) {
+
+            // 103 Referenz Daten
+            var referenceData =
+            {
+                "#103":
+                {
+                    a_side: [
+                        { move: "X", cor: +0.1, X: 0.0529, Y: 0.0934, Z: 0.0120 },
+                        { move: "X", cor: -0.1, X: -0.0582, Y: -0.0810, Z: -0.0167 },
+                        { move: 'Y', cor: -0.1, X: 0.0691, Y: -0.0625, Z: 0.0307 },
+                        { move: 'Y', cor: +0.1, X: -0.0723, Y: 0.0485, Z: -0.0072 },
+                        { move: 'Z', cor: +0.1, X: 0.0379, Y: 0.0282, Z: -0.1019 },
+                        { move: 'Z', cor: -0.1, X: -0.0227, Y: 0.0216, Z: 0.0901 },
+                    ],
+                    b_side: [
+                        { move: 'X', cor: +0.1, X: 0.0485, Y: 0.0817, Z: 0.0191 },
+                        { move: 'X', cor: -0.1, X: -0.0649, Y: -0.0696, Z: -0.0222 },
+                        { move: 'Y', cor: -0.1, X: 0.0766, Y: -0.0553, Z: 0.0218 },
+                        { move: 'Y', cor: +0.1, X: -0.0692, Y: 0.0589, Z: -0.0079 },
+                        { move: 'Z', cor: +0.1, X: 0.0308, Y: -0.0107, Z: -0.1022 },
+                        { move: 'Z', cor: -0.1, X: -0.0247, Y: 0.0075, Z: 0.0823 },
+                    ]
+                },
+
+                "#694":
+                {
+                    a_side: [
+                        { move: "X", cor: +0.1, X: 0.0612, Y: 0.0693, Z: 0.0153 },
+                        { move: "X", cor: -0.1, X: -0.0589, Y: -0.0797, Z: -0.0190 },
+                        { move: 'Y', cor: +0.1, X: -0.0661, Y: 0.0604, Z: -0.0239 },
+                        { move: 'Y', cor: -0.1, X: 0.0860, Y: -0.0683, Z: 0.0252 },
+                        { move: 'Z', cor: +0.1, X: 0.0308, Y: -0.0008, Z: -0.0953 },
+                        { move: 'Z', cor: -0.1, X: -0.0239, Y: -0.0009, Z: 0.0966 },
+
+                    ],
+                    b_side: [
+                        { move: "X", cor: +0.1, X: 0.0588, Y: 0.0985, Z: 0.0175 },
+                        { move: "X", cor: -0.1, X: -0.0572, Y: -0.0643, Z: -0.0136 },
+                        { move: 'Y', cor: +0.1, X: -0.0770, Y: 0.0768, Z: -0.0199 },
+                        { move: 'Y', cor: -0.1, X: 0.0794, Y: -0.0444, Z: 0.0233 },
+                        { move: 'Z', cor: +0.1, X: 0.0232, Y: 0.0297, Z: -0.0902 },
+                        { move: 'Z', cor: -0.1, X: -0.0244, Y: 0.0258, Z: 0.1027 },
+                    ]
+                },
+
+                "#474":
+                {
+                    a_side: [
+                        { move: "X", cor: +0.1, X: 0.0470, Y: 0.0881, Z: 0.0112 },
+                        { move: "X", cor: -0.1, X: -0.0736, Y: -0.0880, Z: -0.0195 },
+                        { move: 'Y', cor: +0.1, X: -0.0819, Y: 0.0679, Z: -0.0290 },
+                        { move: 'Y', cor: -0.1, X: 0.0677, Y: -0.0577, Z: 0.0115 },
+                        { move: 'Z', cor: +0.1, X: 0.0241, Y: -0.0026, Z: -0.1032 },
+                        { move: 'Z', cor: -0.1, X: -0.0387, Y: 0.0111, Z: 0.0876 },
+
+                    ],
+                    b_side: [
+                        { move: "X", cor: +0.1, X: 0.0584, Y: 0.1082, Z: 0.0146 },
+                        { move: "X", cor: -0.1, X: -0.0606, Y: -0.0672, Z: -0.0211 },
+                        { move: 'Y', cor: +0.1, X: -0.0749, Y: 0.0735, Z: -0.0265 },
+                        { move: 'Y', cor: -0.1, X: 0.0734, Y: -0.0434, Z: 0.0152 },
+                        { move: 'Z', cor: +0.1, X: 0.0281, Y: 0.0133, Z: -0.1016 },
+                        { move: 'Z', cor: -0.1, X: -0.0186, Y: 0.0127, Z: 0.0890 },
+                    ]
+                }
+            };
+
+            //Mittelwert Berechnend aus beiden Seiten
+            let X_ist = (Number(A_X_ist) + Number(B_X_ist)) / 2;
+            let Y_ist = (Number(A_Y_ist) + Number(B_Y_ist)) / 2;
+            let Z_ist = (Number(A_Z_ist) + Number(B_Z_ist)) / 2;
+
+            // Toleranz min und max
+            let tol_max = 0.010;
+            let tol_min = tol_max * (-1);
+
+            let x_cor = 0;
+            let y_cor = 0;
+            let z_cor = 0;
+
+            let count_runs = 0;
+            let tries = 100;
+
+            let X_plus = "";
+            let X_minus = "";
+            let Y_plus = "";
+            let Y_minus = "";
+            let Z_plus = "";
+            let Z_minus = "";
+
+            function round(value) {
+                return Number(value.toFixed(3));
+            }
+
+            function doMath(axesObject, axesIstValue, xIst, yIst, zIst, xCor, yCor, zCor, run) {
+
+                /* 
+                Funktion zum Berechnen der Korrektur
+                Benötigt den Daten Satz der angewählten Anlage
+                Die Ist-Werte der Achse die korrigiert werden sollen und die Ist-Werte aller anderen Achsen
+                
+                Berechnet einen Faktor zum Multiplizieren aus dem Ist-Wert der Achse die korrigiert werden muss
+                Anschließen werden damit die Korrektur Werte und die Ist-Werte neu Berechnet und zurück gegeben
+                */
+
+                let factor = axesIstValue / axesObject[run];
+
+                factor = Math.abs(factor);
+
+                console.log("\nCorr: " + run + " mit dict: ", axesObject);
+                console.log("Before: X=  " + round(xIst) + "  Y= " + round(yIst) + "  Z= " + round(zIst) + "  X_Cor= " + round(xCor) + "  Y_Cor= " + round(yCor) + " Z_Cor= " + round(zCor) + " Faktor= " + round(factor));
+
+                xIst = xIst + (factor * axesObject['X']);
+                yIst = yIst + (factor * axesObject['Y']);
+                zIst = zIst + (factor * axesObject['Z']);
+
+                console.log('Change: X= ' + round(factor * axesObject['X']) + 'Y= ' + round(factor * axesObject['Y']) + ' Z= ' + round(factor * axesObject['Z']) + " " + axesObject['move'] + '_Cor=', round(factor * axesObject['cor']));
+
+                if (axesObject['move'] == 'X') {
+                    xCor += (factor * axesObject['cor']);
+                }
+
+                if (axesObject['move'] == 'Y') {
+                    yCor += (factor * axesObject['cor']);
+                }
+
+                if (axesObject['move'] == 'Z') {
+                    zCor += (factor * axesObject['cor']);
+                }
+
+                console.log("After:  X=  " + round(xIst) + " Y= " + round(yIst) + "  Z= " + round(zIst) + "  X_Cor= " + round(xCor) + " Y_Cor= " + round(yCor) + " Z_Cor= " + round(zCor))
+                return [xIst, yIst, zIst, xCor, yCor, zCor];
+            }
+
+            function get_data(move, operator, data) {
+
+                /*
+                Funktion um Daten der einzelnen Achsen-Werte von den Referenz Daten zu bekommen
+            
+                Return: Daten der gewollten Achsen Bewegung (X, Y oder Z) und der Gewünschten operation ( + oder -)
+                */
+
+                var t_x = 0;
+                var t_y = 0;
+                var t_z = 0;
+                var cor = 0;
+                var count = 0;
+
+                for (x = 0; x < data.length; x++) {
+
+                    if (data[x]["move"] == move) {
+
+                        if (operator == "+") {
+                            if (data[x]["cor"] > 0) {
+                                t_x += data[x]['X'];
+                                t_y += data[x]['Y'];
+                                t_z += data[x]['Z'];
+                                cor += data[x]['cor'];
+                            }
+                        }
+
+                        if (operator == "-") {
+                            if (data[x]["cor"] < 0) {
+                                t_x += data[x]['X'];
+                                t_y += data[x]['Y'];
+                                t_z += data[x]['Z'];
+                                cor += data[x]['cor'];
+                            }
+                        }
+                        count++;
+                    }
+                }
+
+                return {
+                    "move": move, "cor": cor / count, 'X': t_x / count, 'Y': t_y / count,
+                    'Z': t_z / count
+                };
+            }
+
+            /*Zum Kontrollieren welche Bewegung am besten für die jeweilige Achse ist. D.h. Wo Bewegt sich X z.B. am meisten in + Richtung
+
+            machineData = referenceData["#474"].a_side.concat(referenceData["#474"].b_side)
+            console.log(machineData);
+            console.log(get_data('X', '+', (machineData)))
+            console.log(get_data('X', '-', (machineData)))
+            console.log(get_data('Y', '+', (machineData)))
+            console.log(get_data('Y', '-', (machineData)))
+            console.log(get_data('Z', '+', (machineData)))
+            console.log(get_data('Z', '-', (machineData)),'\n')
+            return
+            */
+
+            // Check für welche Anlage Daten genutzt werden 
+            if (machine == "#103") {
+                machineData = referenceData["#103"].a_side.concat(referenceData["#103"].b_side);
+
+                //Beste Korrektur eingeben für #103 bsp.: Fall X am besten mit Y korrigiert werden kann hier auch eintragen
+                X_plus = get_data('Y', '-', (machineData));
+                X_minus = get_data('Y', '+', (machineData));
+                Y_plus = get_data('X', '+', (machineData));
+                Y_minus = get_data('X', '-', (machineData));
+                Z_plus = get_data('Z', '-', (machineData));
+                Z_minus = get_data('Z', '+', (machineData));
+            } else if (machine == "#694") {
+                machineData = referenceData["#694"].a_side.concat(referenceData["#694"].b_side);
+
+                //Beste Korrektur eingeben für #103 bsp.: Fall X am besten mit Y korrigiert werden kann hier auch eintragen
+                X_plus = get_data('Y', '-', (machineData));
+                X_minus = get_data('Y', '+', (machineData));
+                Y_plus = get_data('X', '+', (machineData));
+                Y_minus = get_data('X', '-', (machineData));
+                Z_plus = get_data('Z', '-', (machineData));
+                Z_minus = get_data('Z', '+', (machineData));
+
+            } else if (machine == "#474") {
+                machineData = referenceData["#474"].a_side.concat(referenceData["#474"].b_side);
+
+                //Beste Korrektur eingeben für #103 bsp.: Fall X am besten mit Y korrigiert werden kann hier auch eintragen
+                X_plus = get_data('Y', '-', (machineData));
+                X_minus = get_data('Y', '+', (machineData));
+                Y_plus = get_data('X', '+', (machineData));
+                Y_minus = get_data('X', '-', (machineData));
+                Z_plus = get_data('Z', '-', (machineData));
+                Z_minus = get_data('Z', '+', (machineData));
+
+            } else {
+                return ["", "ERROR", ""];
+            }
+            //console.log(X_plus, X_minus, Y_plus, Y_minus, Z_plus, Z_minus, machine);
+
+
+
+            //Algorithmus start
+            while (count_runs < tries) {
+
+                // checkt welche Achse Korrigiert werden soll./ Benutzt die Achse die am größten ist
+                if ((Math.abs(X_ist) >= Math.abs(Y_ist)) && (Math.abs(X_ist) >= Math.abs(Z_ist)) && (Math.abs(X_ist) >= tol_max)) {
+                    run = 'X';
+                } else if ((Math.abs(Y_ist) >= Math.abs(X_ist)) && (Math.abs(Y_ist) >= Math.abs(Z_ist)) && (Math.abs(Y_ist) >= tol_max)) {
+                    run = 'Y';
+                } else if ((Math.abs(Z_ist) >= Math.abs(X_ist)) && (Math.abs(Z_ist) >= Math.abs(Y_ist)) && (Math.abs(Z_ist) >= tol_max)) {
+                    run = 'Z';
+                } else {
+                    run = 'done';
+                    console.log('\n', run, '\n');
+                    break
+                }
+
+
+                count_runs++;
+                back = [];
+
+                // berechnet die Korrektur der vorher ausgewählten Achse 
+                if (run == 'X') {
+
+                    if (X_ist > tol_max) {
+                        back = doMath(X_minus, X_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+
+                    } else if (X_ist < tol_min) {
+                        back = doMath(X_plus, X_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+                    }
+                }
+
+                if (run == 'Y') {
+                    if (Y_ist > tol_max) {
+                        back = doMath(Y_minus, Y_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+
+                    } else if (Y_ist < tol_min) {
+                        back = doMath(Y_plus, Y_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+                    }
+                }
+
+                if (run == 'Z') {
+
+                    if (Z_ist > tol_max) {
+                        back = doMath(Z_minus, Z_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+
+                    } else if (Z_ist < tol_min) {
+                        back = doMath(Z_plus, Z_ist, X_ist, Y_ist, Z_ist, x_cor, y_cor, z_cor, run);
+                    }
+                }
+                if (back.length != 0) {
+                    X_ist = back[0];
+                    Y_ist = back[1];
+                    Z_ist = back[2];
+                    x_cor = back[3];
+                    y_cor = back[4];
+                    z_cor = back[5];
+                }
+
+                console.log('run: ', count_runs);
+            }
+
+            console.log("X Korrektur: " + round(x_cor) + "\nY Korrektur: " + round(y_cor) + "\nZ Korrektur: " + round(z_cor) + "\n Runs total: " + count_runs);
+            console.log("\n ~ Ergebnis an der Zeiss Y: " + round(Y_ist) + " X: " + round(X_ist) + " Z:" + round(Y_ist));
+
+            if (count_runs == tries) {
+                return ["", "ERROR", ""];
+            } else {
+                return [round(x_cor), round(y_cor), round(z_cor)];
+            }
+        }
+
+        // DOM manipulation
+
+        // Variablen for Input
+        let btn = document.querySelector(".button");
+        let xA = document.querySelector("#inputXA");
+        let yA = document.querySelector("#inputYA");
+        let zA = document.querySelector("#inputZA");
+        let xB = document.querySelector("#inputXB");
+        let yB = document.querySelector("#inputYB");
+        let zB = document.querySelector("#inputZB");
+        let dropDownList = document.querySelector("#dropDownList");
+        let table = document.querySelector("#correctionTable");
+        let h2 = document.querySelector(".h2");
+
+        // event 
+        btn.addEventListener("click", function (e) {
+
+            e.preventDefault();
+
+            // Remove last Events
+            if (table.childElementCount != 0) {
+                table.parentElement.lastChild.remove();
+                table.parentElement.lastChild.remove();
+                table.innerHTML = "";
+                h2.innerText = "";
+            }
+
+            //return if all values are 0
+            if ((Number(xA.value) + Number(yA.value) + Number(zA.value) + Number(xB.value) + Number(yB.value) + Number(zB.value)) === 0) {
+                return;
+            }
+
+            // run function return list [corrX, corrY, corrZ]
+            let answer = bohren(xA.value, yA.value, zA.value, xB.value, yB.value, zB.value, dropDownList.value);
+
+            //Tabellen Überschrift mit der Anlagenbezeichnung
+            h2.innerText = dropDownList.value;
+
+            // Create answer table
+            let rowName = ["Korrektur:", "Satz in der NPV:"];
+            let tableHeader = ["Achse:", "X", "Y", "Z"];
+            let npvList694 = ["G530: N1170", "G530: N1190", "G530: N1210"];
+            let npvList103 = ["G532: N1900", "G532: N1920", "G532: N1940"];
+            let npvList474 = ["G532: N1900", "G532: N1920", "G532: N1940"];
+
+            for (r = 0; r < 3; r++) {
+
+                let row = table.insertRow(r);
+
+                for (c = 0; c < 4; c++) {
+
+                    let cell = row.insertCell(c);
+
+                    if (r === 0) { // Tabellen header
+                        cell.innerText = tableHeader[c];
+                        if (c === 0) {
+                            cell.style.padding = "5px 50px";
+                        }
+                    } else if (c === 0) { // Row name
+                        cell.innerText = rowName[r - 1];
+                        cell.style.padding = "5px 50px";
+
+                    } else if (r === 1) { //add answer corrX, corrY, corrZ
+                        cell.innerText = answer[c - 1].toFixed(3);
+                        if (answer[c - 1] >= 0) {
+                            cell.style.backgroundColor = "lightgreen";
+                        } else {
+                            cell.style.backgroundColor = "lightcoral";
+                        }
+                    } else if (r === 2) { //NPV Beschreibung
+                        if (dropDownList.value == "#694") {
+                            cell.innerText = npvList694[c - 1];
+                        } else if (dropDownList.value == "#103") {
+                            cell.innerText = npvList103[c - 1];
+                        } else if (dropDownList.value == "#474") {
+                            cell.innerText = npvList474[c - 1];
+                        };
+                    }
+                }
+            }
+
+            //Zeitstempel 
+            text1 = document.createElement("p");
+            text1.innerText = "Zeitstempel: " + new Date().toLocaleString() + "\nGrün = Positive Korrektur\nRot = Negative Korrektur\nKorrektur-Werte bei der Korrektur im Programm dazu rechnen oder abziehen.";
+            text1.style.margin = "5px";
+            text1.style.color = "grey";
+
+            text2 = document.createElement("p");
+            text2.innerText = "Bitte beachte das es sich hierbei nur um einen errechneten Wert handelt.\nDeswegen wie gehabt nach der Korrektur die Teile abstecken und Zeiss messen!";
+            text2.style.color = "red";
+            text2.style.margin = "20px 10px";
+            text2.style.fontSize = "1.5rem";
+
+            table.parentElement.appendChild(text1);
+            table.parentElement.appendChild(text2);
+
+        });
+    </script>
+
+</body>
+
+</html>
